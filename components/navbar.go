@@ -9,12 +9,14 @@ import (
 
 type Navbar struct {
 	*tview.Box
+	Height  int
 	Labels  []string
 	Current int
 }
 
 func NewNavbar(labels []string) *Navbar {
 	return &Navbar{
+		Height: 1,
 		Box:    tview.NewBox(),
 		Labels: labels,
 	}

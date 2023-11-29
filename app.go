@@ -7,28 +7,28 @@ import (
 
 // View of app
 type App struct {
-	A           *tview.Application
-	P           *tview.Pages
-	S           *components.Sidebar // sidebar to choose from various ListPreviews
+	App         *tview.Application
+	Pages       *tview.Pages
+	Sidebar     *components.Sidebar
 	ShowSidebar bool
 }
 
 func NewApp() *App {
 	app := App{
-		P: tview.NewPages(),
-		S: components.NewSidebar([]string{}),
+		Pages:   tview.NewPages(),
+		Sidebar: components.NewSidebar([]string{}),
 	}
 
 	// Create fullscreen app
-	app.A = tview.NewApplication()
+	app.App = tview.NewApplication()
 
 	// Create ListPreview with focus on navbar
-	listpreview := components.NewListPreview([]string{"ls"})
-	listpreview.SetKeymaps(app.A)
+	lp := components.NewListPreview([]string{"ls"})
+	lp.SetKeymaps(app.App)
 
 	// Add it to page and display
-	app.P.AddPage("home", listpreview.G, true, true)
-	app.A.SetRoot(app.P, true).SetFocus(app.P)
+	app.Pages.AddPage("home", lp, true, true)
+	app.App.SetRoot(app.Pages, true).SetFocus(lp.Navbar)
 
 	return &app
 }

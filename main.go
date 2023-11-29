@@ -12,7 +12,7 @@ func main() {
 	app := NewApp()
 
 	// Run the application
-	err := app.A.Run()
+	err := app.App.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
