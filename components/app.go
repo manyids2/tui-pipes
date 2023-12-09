@@ -1,7 +1,6 @@
-package main
+package components
 
 import (
-	"github.com/manyids2/tui-pipes/components"
 	"github.com/rivo/tview"
 )
 
@@ -9,22 +8,22 @@ import (
 type App struct {
 	App         *tview.Application
 	Pages       *tview.Pages
-	Sidebar     *components.Sidebar
+	Sidebar     *Sidebar
 	ShowSidebar bool
 }
 
 func NewApp() *App {
 	app := App{
 		Pages:   tview.NewPages(),
-		Sidebar: components.NewSidebar([]string{}),
+		Sidebar: NewSidebar([]string{}),
+		App:     tview.NewApplication(),
 	}
 
-	// Create fullscreen app
-	app.App = tview.NewApplication()
-
 	// Create ListPreview with focus on navbar
-	lp := components.NewListPreview([]string{"ls"})
-	lp.SetKeymaps(app.App)
+	lp := NewListPreview("List files",
+		"exa", []string{".", "-T", "--icons", "--color=always"},
+		app.App,
+	)
 
 	// Add it to page and display
 	app.Pages.AddPage("home", lp, true, true)

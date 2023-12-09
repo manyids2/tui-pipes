@@ -1,17 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"log"
+
+	"github.com/manyids2/tui-pipes/components"
 )
 
 func main() {
-	// Get path from args
-	path := "layouts/home.yaml"
-	fmt.Println(path)
-	app := NewApp()
-
-	// Run the application
+	app := components.NewApp()
 	err := app.App.Run()
 	if err != nil {
 		log.Fatal(err)
