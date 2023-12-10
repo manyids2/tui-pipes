@@ -10,16 +10,6 @@ import (
 	"github.com/rivo/tview"
 )
 
-// Define transform using go for convinience over bash?
-type transform_fn func(string) string
-
-// Single list+preview pair
-type ListPreviewOptions struct {
-	Separator       string       // lines, words, delimiter, etc.
-	TransformView   transform_fn // function for display
-	TransformSelect transform_fn // function for selection
-}
-
 // Single list+preview pair
 type ListPreview struct {
 	*tview.Grid
@@ -38,29 +28,22 @@ type ListPreview struct {
 	Focused     int
 	FocusCycle  []tview.Primitive // Interface, no need for '*'
 
-	// Arguments for cli command
-	Command string
-	Args    []string
-	Limit   int
-	Output  chan string
-	Loaded  bool
+	// Config
+	Config Config
+	Output chan string
+	Done   bool
 
-	// Options
-	Options ListPreviewOptions
+	// Preview
 }
 
-func NewListPreview(name, command string, args []string, app *tview.Application) *ListPreview {
+func NewListPreview(config Config, app *tview.Application) *ListPreview {
 	lp := ListPreview{
-		App: app,
-
-		// Navbar
-		Command: command,
-		Args:    args,
-		Limit:   128,
+		App:    app,
+		Config: config,
 
 		// Navbar, Statusbar
-		Navbar:    NewNavbar(name, command, args),
-		Statusbar: NewStatusbar(name),
+		Navbar:    NewNavbar(config.Path, config.Source.Command, config.Source.Args),
+		Statusbar: NewStatusbar(config.Path),
 
 		// List
 		List: tview.NewList(),
@@ -75,15 +58,23 @@ func NewListPreview(name, command string, args []string, app *tview.Application)
 	}
 
 	// Appearance for focus
+	lp.List.ShowSecondaryText(false)
 	lp.List.SetBorder(true)
 	lp.Preview.SetBorder(true)
 	lp.Preview.SetDynamicColors(true)
-	lp.FocusCycle = []tview.Primitive{lp.Navbar, lp.List, lp.Preview}
+	lp.FocusCycle = []tview.Primitive{lp.List, lp.Preview}
+	lp.Focused = -1
 
-	// Cancel func of navbar
-	lp.Navbar.SetCancelFunc(func() {
-		lp.Focused = -1
-		app.SetFocus(lp.Box)
+	// Hover func of list
+	lp.List.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		lp.Preview.Clear()
+		fmt.Fprintf(lp.Ansi, "%s\n", mainText)
+	})
+
+	// Selected func of list
+	lp.List.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		lp.Preview.Clear()
+		fmt.Fprintf(lp.Ansi, "Selected: %s\n", mainText)
 	})
 
 	// Cancel func of list
@@ -108,35 +99,25 @@ func NewListPreview(name, command string, args []string, app *tview.Application)
 
 func (lp *ListPreview) Render() {
 	lp.Grid.Clear()
-
 	if lp.ShowNavbar {
 		// navbar, content
 		lp.Grid.SetRows(lp.Navbar.Height, -1, 1).SetColumns(lp.GridColumns...)
-		lp.Grid.AddItem(lp.Navbar, 0, 0, 1, 2, 0, 0, true)
-		lp.Grid.AddItem(lp.List, 1, 0, 1, 1, 0, 0, false)
+		lp.Grid.AddItem(lp.Navbar, 0, 0, 1, 2, 0, 0, false)
+		lp.Grid.AddItem(lp.List, 1, 0, 1, 1, 0, 0, true)
 		lp.Grid.AddItem(lp.Preview, 1, 1, 1, 1, 0, 0, false)
 		lp.Grid.AddItem(lp.Statusbar, 2, 0, 1, 2, 0, 0, false)
-		lp.FocusCycle = []tview.Primitive{lp.Navbar, lp.List, lp.Preview}
 	} else {
 		// content
 		lp.Grid.SetRows(-1, 1).SetColumns(lp.GridColumns...)
 		lp.Grid.AddItem(lp.List, 0, 0, 1, 1, 0, 0, true)
 		lp.Grid.AddItem(lp.Preview, 0, 1, 1, 1, 0, 0, false)
 		lp.Grid.AddItem(lp.Statusbar, 1, 0, 1, 2, 0, 0, false)
-		if lp.FocusCycle[lp.Focused] == lp.Navbar {
-			lp.Focused = 0
-		} else {
-			lp.Focused = lp.Focused - 1 // Navbar was first element
-		}
-		lp.FocusCycle = []tview.Primitive{lp.List, lp.Preview}
 	}
+	lp.FocusCycle = []tview.Primitive{lp.List, lp.Preview}
 }
 
 func (lp *ListPreview) ToggleNavbar() {
 	lp.ShowNavbar = !lp.ShowNavbar
-	if lp.FocusCycle[lp.Focused] == lp.Navbar {
-		lp.Focused = 0
-	}
 	lp.Render()
 }
 
@@ -191,7 +172,7 @@ func (lp *ListPreview) InputHandler() func(event *tcell.EventKey, setFocus func(
 }
 
 func (lp *ListPreview) Run() {
-	cmd := exec.Command(lp.Command, lp.Args...)
+	cmd := exec.Command(lp.Config.Source.Command, lp.Config.Source.Args...)
 
 	// Start the command
 	stdout, _ := cmd.StdoutPipe()
@@ -202,18 +183,20 @@ func (lp *ListPreview) Run() {
 	}
 
 	// Scanner
+	lp.Preview.Clear()
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		text := scanner.Text()
-		fmt.Fprintf(lp.Ansi, "%s\n", text)
+		lp.List.AddItem(text, "", ' ', nil)
+		// fmt.Fprintf(lp.Ansi, "%s\n", text)
 	}
 	if scanner.Err() != nil {
 		fmt.Fprint(lp.Ansi, fmt.Sprintf("%s\n", "Command failed"))
 	}
 	cmd.Wait()
 
-	lp.Loaded = true
+	lp.Done = true
 	lp.Navbar.Loaded = true
 	lp.Render()
 }

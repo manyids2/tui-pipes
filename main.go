@@ -7,8 +7,13 @@ import (
 )
 
 func main() {
-	app := components.NewApp()
-	err := app.App.Run()
+	config, err := components.ReadConfig("./configs/find_bat.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	app := components.NewApp(config)
+	err = app.App.Run()
 	if err != nil {
 		log.Fatal(err)
 	}

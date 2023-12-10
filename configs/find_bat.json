@@ -1,0 +1,10 @@
+{
+  "Source": {
+    "Command": "find",
+    "Args": [".", "-path", "./.git", "-prune", "-o", "-type", "f"]
+  },
+  "Preview": {
+    "Command": "bat",
+    "Args": ["$selected"]
+  }
+}

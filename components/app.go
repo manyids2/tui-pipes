@@ -12,22 +12,20 @@ type App struct {
 	ShowSidebar bool
 }
 
-func NewApp() *App {
+func NewApp(config Config) *App {
 	app := App{
 		Pages:   tview.NewPages(),
 		Sidebar: NewSidebar([]string{}),
 		App:     tview.NewApplication(),
 	}
 
-	// Create ListPreview with focus on navbar
-	lp := NewListPreview("List files",
-		"exa", []string{".", "-T", "--icons", "--color=always"},
-		app.App,
-	)
+	// Create ListPreview
+	lp := NewListPreview(config, app.App)
 
 	// Add it to page and display
 	app.Pages.AddPage("home", lp, true, true)
-	app.App.SetRoot(app.Pages, true).SetFocus(lp.Navbar)
+	app.Pages.SwitchToPage("home")
+	app.App.SetRoot(app.Pages, true).SetFocus(lp)
 
 	return &app
 }

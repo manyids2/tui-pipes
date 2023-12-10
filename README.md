@@ -42,3 +42,15 @@ Necessary background:
 ## Bad decisions
 
 Navbar as separate component
+
+## Usage examples
+
+1. Show files
+
+- filename - `show_files.json`
+- source - `find [., -type, f]`
+- preview - `bat $item`
+- bindings
+  - `Enter`
+  - `Space`
+  - `?`
