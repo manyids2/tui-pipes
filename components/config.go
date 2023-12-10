@@ -13,7 +13,7 @@ type Command struct {
 // Input config
 type Config struct {
 	Path     string
-	Source   Command            `json:"source"`
+	List     Command            `json:"list"`
 	Preview  Command            `json:"preview"`
 	Bindings map[string]Command `json:"bindings,omitempty"`
 }

@@ -21,6 +21,7 @@ func NewApp(config Config) *App {
 
 	// Create ListPreview
 	lp := NewListPreview(config, app.App)
+	lp.Run()
 
 	// Add it to page and display
 	app.Pages.AddPage("home", lp, true, true)

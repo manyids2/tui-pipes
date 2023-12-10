@@ -42,7 +42,7 @@ func NewListPreview(config Config, app *tview.Application) *ListPreview {
 		Config: config,
 
 		// Navbar, Statusbar
-		Navbar:    NewNavbar(config.Path, config.Source.Command, config.Source.Args),
+		Navbar:    NewNavbar(config.Path, config.List.Command, config.List.Args),
 		Statusbar: NewStatusbar(config.Path),
 
 		// List
@@ -62,8 +62,8 @@ func NewListPreview(config Config, app *tview.Application) *ListPreview {
 	lp.List.SetBorder(true)
 	lp.Preview.SetBorder(true)
 	lp.Preview.SetDynamicColors(true)
-	lp.FocusCycle = []tview.Primitive{lp.List, lp.Preview}
-	lp.Focused = -1
+	lp.FocusCycle = []tview.Primitive{lp.List}
+	lp.Focused = 0
 
 	// Hover func of list
 	lp.List.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
@@ -79,14 +79,7 @@ func NewListPreview(config Config, app *tview.Application) *ListPreview {
 
 	// Cancel func of list
 	lp.List.SetDoneFunc(func() {
-		lp.Focused = -1
-		app.SetFocus(lp.Box)
-	})
-
-	// Cancel func of TextView
-	lp.Preview.SetDoneFunc(func(tcell.Key) {
-		lp.Focused = -1
-		app.SetFocus(lp.Box)
+		lp.App.Stop()
 	})
 
 	// Render the grid
@@ -156,9 +149,6 @@ func (lp *ListPreview) InputHandler() func(event *tcell.EventKey, setFocus func(
 			setFocus(lp.FocusCycle[lp.Focused])
 		case tcell.KeyCtrlSpace:
 			lp.ToggleNavbar()
-		case tcell.KeyCtrlT:
-			lp.Focused = -1
-			setFocus(lp.Box)
 		case tcell.KeyEnter:
 			lp.Run()
 		case tcell.KeyEscape:
@@ -172,7 +162,7 @@ func (lp *ListPreview) InputHandler() func(event *tcell.EventKey, setFocus func(
 }
 
 func (lp *ListPreview) Run() {
-	cmd := exec.Command(lp.Config.Source.Command, lp.Config.Source.Args...)
+	cmd := exec.Command(lp.Config.List.Command, lp.Config.List.Args...)
 
 	// Start the command
 	stdout, _ := cmd.StdoutPipe()
@@ -188,7 +178,7 @@ func (lp *ListPreview) Run() {
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		text := scanner.Text()
-		lp.List.AddItem(text, "", ' ', nil)
+		lp.List.AddItem(text, "", 0, nil)
 		// fmt.Fprintf(lp.Ansi, "%s\n", text)
 	}
 	if scanner.Err() != nil {
