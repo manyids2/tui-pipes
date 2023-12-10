@@ -1,0 +1,10 @@
+{
+  "List": {
+    "Command": "git",
+    "Args": ["log", "--pretty=format:%h"]
+  },
+  "Preview": {
+    "Command": "git",
+    "Args": ["diff", "--stat", "--color", "$selected"]
+  }
+}
