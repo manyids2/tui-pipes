@@ -42,6 +42,8 @@ Necessary background:
 ## Bad decisions
 
 Navbar as separate component
+Using tview: just use tcell instead, use our own event loop
+App as separate component: it is just clutter for now, but maybe later pages may be useful
 
 ## Usage examples
 

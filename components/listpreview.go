@@ -62,24 +62,34 @@ func NewListPreview(config Config, app *tview.Application) *ListPreview {
 	lp.List.SetBorder(true)
 	lp.Preview.SetBorder(true)
 	lp.Preview.SetDynamicColors(true)
-	lp.FocusCycle = []tview.Primitive{lp.List}
+	lp.FocusCycle = []tview.Primitive{lp.List, lp.Preview}
 	lp.Focused = 0
 
 	// Hover func of list
 	lp.List.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
-		lp.Preview.Clear()
-		fmt.Fprintf(lp.Ansi, "%s\n", mainText)
+		lp.LoadPreview()
 	})
 
 	// Selected func of list
 	lp.List.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
-		lp.Preview.Clear()
-		fmt.Fprintf(lp.Ansi, "Selected: %s\n", mainText)
+		lp.Focused = 1
+		lp.App.SetFocus(lp.FocusCycle[lp.Focused])
 	})
 
 	// Cancel func of list
 	lp.List.SetDoneFunc(func() {
 		lp.App.Stop()
+	})
+
+	// Keymaps for list
+	lp.List.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		return event
+	})
+
+	// Keymaps for preview
+	lp.Preview.SetDoneFunc(func(tcell.Key) {
+		lp.Focused = 0
+		lp.App.SetFocus(lp.FocusCycle[lp.Focused])
 	})
 
 	// Render the grid
@@ -132,6 +142,12 @@ func (lp *ListPreview) HasFocus() bool {
 
 func (lp *ListPreview) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return lp.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+		// Global, before handling to childPrimitive
+		switch event.Rune() {
+		case 'q':
+			lp.App.Stop()
+		}
+
 		if lp.Focused >= 0 {
 			childPrimitive := lp.FocusCycle[lp.Focused]
 			if childPrimitive.HasFocus() {
@@ -149,19 +165,15 @@ func (lp *ListPreview) InputHandler() func(event *tcell.EventKey, setFocus func(
 			setFocus(lp.FocusCycle[lp.Focused])
 		case tcell.KeyCtrlSpace:
 			lp.ToggleNavbar()
-		case tcell.KeyEnter:
-			lp.Run()
+		case tcell.KeyCtrlR:
+			lp.LoadList()
 		case tcell.KeyEscape:
-			lp.App.Stop()
-		}
-		switch event.Rune() {
-		case 'q':
 			lp.App.Stop()
 		}
 	})
 }
 
-func (lp *ListPreview) Run() {
+func (lp *ListPreview) LoadList() {
 	cmd := exec.Command(lp.Config.List.Command, lp.Config.List.Args...)
 
 	// Start the command
@@ -189,4 +201,40 @@ func (lp *ListPreview) Run() {
 	lp.Done = true
 	lp.Navbar.Loaded = true
 	lp.Render()
+}
+
+func (lp *ListPreview) LoadPreview() {
+	lp.Preview.Clear()
+
+	// Inject $selected
+	text, _ := lp.List.GetItemText(lp.List.GetCurrentItem())
+	args := []string{}
+	for _, a := range lp.Config.Preview.Args {
+		if a == "$selected" {
+			args = append(args, text)
+		} else {
+			args = append(args, a)
+		}
+	}
+	cmd := exec.Command(lp.Config.Preview.Command, args...)
+
+	// Start the command
+	stdout, _ := cmd.StdoutPipe()
+	err := cmd.Start()
+	if err != nil {
+		fmt.Fprintf(lp.Preview, "%s\n", "Command failed")
+		return
+	}
+
+	// Scanner
+	scanner := bufio.NewScanner(stdout)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		text := scanner.Text()
+		fmt.Fprintf(lp.Ansi, "%s\n", text)
+	}
+	if scanner.Err() != nil {
+		fmt.Fprint(lp.Ansi, fmt.Sprintf("%s\n", "Command failed"))
+	}
+	cmd.Wait()
 }
