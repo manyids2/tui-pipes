@@ -10,15 +10,15 @@ import (
 	"github.com/rivo/tview"
 )
 
-// Single list+preview pair
-type ListPreview struct {
+// Single tree+preview pair
+type TreePreview struct {
 	*tview.Grid
 
 	// Gui
 	App       *tview.Application // ref to app for stop, focus, etc.
 	Navbar    *Navbar            // navbar to adjust state
 	Statusbar *Statusbar         // statusbar for debug output, confirmations, etc.
-	List      *tview.List        // list obtained from running CmdStr
+	Tree      *tview.TreeView    // list obtained from running CmdStr
 	Preview   *tview.TextView    // preview window
 	Ansi      io.Writer
 
@@ -34,17 +34,17 @@ type ListPreview struct {
 	Done   bool
 }
 
-func NewListPreview(config Config, app *tview.Application) *ListPreview {
-	lp := ListPreview{
+func NewTreePreview(config Config, app *tview.Application) *TreePreview {
+	lp := TreePreview{
 		App:    app,
 		Config: config,
 
 		// Navbar, Statusbar
-		Navbar:    NewNavbar(config.Path, config.List.Command, config.List.Args),
+		Navbar:    NewNavbar(config.Path, config.Tree.Command, config.Tree.Args),
 		Statusbar: NewStatusbar(config.Path),
 
-		// List
-		List: tview.NewList(),
+		// Tree
+		Tree: tview.NewTreeView(),
 
 		// Preview
 		Preview: tview.NewTextView(),
@@ -56,31 +56,30 @@ func NewListPreview(config Config, app *tview.Application) *ListPreview {
 	}
 
 	// Appearance for focus
-	lp.List.ShowSecondaryText(false)
-	lp.List.SetBorder(true)
+	lp.Tree.SetBorder(true)
 	lp.Preview.SetBorder(true)
 	lp.Preview.SetDynamicColors(true)
-	lp.FocusCycle = []tview.Primitive{lp.List, lp.Preview}
+	lp.FocusCycle = []tview.Primitive{lp.Tree, lp.Preview}
 	lp.Focused = 0
 
 	// Hover func of list
-	lp.List.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+	lp.Tree.SetChangedFunc(func(node *tview.TreeNode) {
 		lp.LoadPreview()
 	})
 
 	// Selected func of list
-	lp.List.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+	lp.Tree.SetSelectedFunc(func(node *tview.TreeNode) {
 		lp.Focused = 1
 		lp.App.SetFocus(lp.FocusCycle[lp.Focused])
 	})
 
 	// Cancel func of list
-	lp.List.SetDoneFunc(func() {
+	lp.Tree.SetDoneFunc(func(tcell.Key) {
 		lp.App.Stop()
 	})
 
 	// Keymaps for list
-	lp.List.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	lp.Tree.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		return event
 	})
 
@@ -98,31 +97,31 @@ func NewListPreview(config Config, app *tview.Application) *ListPreview {
 	return &lp
 }
 
-func (lp *ListPreview) Render() {
+func (lp *TreePreview) Render() {
 	lp.Grid.Clear()
 	if lp.ShowNavbar {
 		// navbar, content
 		lp.Grid.SetRows(lp.Navbar.Height, -1, 1).SetColumns(lp.GridColumns...)
 		lp.Grid.AddItem(lp.Navbar, 0, 0, 1, 2, 0, 0, false)
-		lp.Grid.AddItem(lp.List, 1, 0, 1, 1, 0, 0, true)
+		lp.Grid.AddItem(lp.Tree, 1, 0, 1, 1, 0, 0, true)
 		lp.Grid.AddItem(lp.Preview, 1, 1, 1, 1, 0, 0, false)
 		lp.Grid.AddItem(lp.Statusbar, 2, 0, 1, 2, 0, 0, false)
 	} else {
 		// content
 		lp.Grid.SetRows(-1, 1).SetColumns(lp.GridColumns...)
-		lp.Grid.AddItem(lp.List, 0, 0, 1, 1, 0, 0, true)
+		lp.Grid.AddItem(lp.Tree, 0, 0, 1, 1, 0, 0, true)
 		lp.Grid.AddItem(lp.Preview, 0, 1, 1, 1, 0, 0, false)
 		lp.Grid.AddItem(lp.Statusbar, 1, 0, 1, 2, 0, 0, false)
 	}
-	lp.FocusCycle = []tview.Primitive{lp.List, lp.Preview}
+	lp.FocusCycle = []tview.Primitive{lp.Tree, lp.Preview}
 }
 
-func (lp *ListPreview) ToggleNavbar() {
+func (lp *TreePreview) ToggleNavbar() {
 	lp.ShowNavbar = !lp.ShowNavbar
 	lp.Render()
 }
 
-func (lp *ListPreview) Focus(delegate func(p tview.Primitive)) {
+func (lp *TreePreview) Focus(delegate func(p tview.Primitive)) {
 	if lp.Focused < 0 {
 		delegate(lp.Box)
 	} else {
@@ -130,7 +129,7 @@ func (lp *ListPreview) Focus(delegate func(p tview.Primitive)) {
 	}
 }
 
-func (lp *ListPreview) HasFocus() bool {
+func (lp *TreePreview) HasFocus() bool {
 	if lp.Focused < 0 {
 		return lp.Box.HasFocus()
 	} else {
@@ -138,7 +137,7 @@ func (lp *ListPreview) HasFocus() bool {
 	}
 }
 
-func (lp *ListPreview) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+func (lp *TreePreview) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return lp.WrapInputHandler(func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 		// Global, before handling to childPrimitive
 		switch event.Rune() {
@@ -164,15 +163,15 @@ func (lp *ListPreview) InputHandler() func(event *tcell.EventKey, setFocus func(
 		case tcell.KeyCtrlSpace:
 			lp.ToggleNavbar()
 		case tcell.KeyCtrlR:
-			lp.LoadList()
+			lp.LoadTree()
 		case tcell.KeyEscape:
 			lp.App.Stop()
 		}
 	})
 }
 
-func (lp *ListPreview) LoadList() {
-	cmd := exec.Command(lp.Config.List.Command, lp.Config.List.Args...)
+func (lp *TreePreview) LoadTree() {
+	cmd := exec.Command(lp.Config.Tree.Command, lp.Config.Tree.Args...)
 
 	// Start the command
 	stdout, _ := cmd.StdoutPipe()
@@ -186,29 +185,36 @@ func (lp *ListPreview) LoadList() {
 	lp.Preview.Clear()
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanLines)
+
+	root := tview.NewTreeNode("root")
+	children := []*tview.TreeNode{}
+
 	for scanner.Scan() {
 		text := scanner.Text()
-		lp.List.AddItem(text, "", 0, nil)
+		children = append(children, tview.NewTreeNode(text))
 		// fmt.Fprintf(lp.Ansi, "%s\n", text)
 	}
 	if scanner.Err() != nil {
 		fmt.Fprint(lp.Ansi, fmt.Sprintf("%s\n", "Command failed"))
 	}
 	cmd.Wait()
+	root.SetChildren(children)
+	lp.Tree.SetRoot(root)
+	lp.Tree.SetCurrentNode(root)
 
 	lp.Done = true
 	lp.Navbar.Loaded = true
 	lp.Render()
 }
 
-func (lp *ListPreview) LoadPreview() {
+func (lp *TreePreview) LoadPreview() {
 	lp.Preview.Clear()
 
-	// Inject $selected
-	text, _ := lp.List.GetItemText(lp.List.GetCurrentItem())
+	// Inject selected
+	text := lp.Tree.GetCurrentNode().GetText()
 	args := []string{}
 	for _, a := range lp.Config.Preview.Args {
-		if a == "$selected" {
+		if a == "selected" {
 			args = append(args, text)
 		} else {
 			args = append(args, a)

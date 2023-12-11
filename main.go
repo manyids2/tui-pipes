@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	config, err := components.ReadConfig("./configs/git_status.json")
+	config, err := components.ReadConfig("./configs/find_bat.json")
 	if err != nil {
 		log.Fatal(err)
 	}

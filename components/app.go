@@ -19,14 +19,18 @@ func NewApp(config Config) *App {
 		App:     tview.NewApplication(),
 	}
 
+	// // Create ListPreview
+	// lp := NewListPreview(config, app.App)
+	// lp.LoadList()
+
 	// Create ListPreview
-	lp := NewListPreview(config, app.App)
-	lp.LoadList()
+	tp := NewTreePreview(config, app.App)
+	tp.LoadTree()
 
 	// Add it to page and display
-	app.Pages.AddPage("home", lp, true, true)
+	app.Pages.AddPage("home", tp, true, true)
 	app.Pages.SwitchToPage("home")
-	app.App.SetRoot(app.Pages, true).SetFocus(lp)
+	app.App.SetRoot(app.Pages, true).SetFocus(tp)
 
 	return &app
 }
