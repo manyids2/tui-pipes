@@ -1,20 +1,7 @@
 package main
 
-import (
-	"log"
-
-	"github.com/manyids2/tui-pipes/components"
-)
+import "github.com/manyids2/tui-pipes/cmd"
 
 func main() {
-	config, err := components.ReadConfig("./configs/find_bat.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	app := components.NewApp(config)
-	err = app.App.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
+	cmd.Execute()
 }

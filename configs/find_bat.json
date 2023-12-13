@@ -1,14 +1,34 @@
 {
   "Tree": {
     "Command": "find",
-    "Args": [".", "-path", "./.git", "-prune", "-o", "-type", "f"]
+    "Args": [
+      ".",
+      "-path",
+      "./.git",
+      "-prune",
+      "-o",
+      "-type",
+      "f"
+    ]
   },
   "List": {
     "Command": "find",
-    "Args": [".", "-path", "./.git", "-prune", "-o", "-type", "f"]
+    "Args": [
+      ".",
+      "-path",
+      "./.git",
+      "-prune",
+      "-o",
+      "-type",
+      "f"
+    ]
   },
   "Preview": {
     "Command": "bat",
-    "Args": ["$selected", "--color=always", "--number"]
+    "Args": [
+      "$selected",
+      "--color=always",
+      "--number"
+    ]
   }
 }
